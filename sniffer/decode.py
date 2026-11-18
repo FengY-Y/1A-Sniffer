@@ -498,6 +498,32 @@ def _app(pkt: Packet) -> Optional[App]:
     return None
 
 
+def _trim_to_ip_length(pkt: Packet) -> None:
+    """按 IP 头里的长度字段裁剪 L4 载荷。
+
+    以太网最小帧是 60 字节，小包会被填充 0。如果直接把 TCP 头之后的字节
+    全当载荷，重组出来的流尾部就会多出几个 \\x00（界面上显示成 □）。
+    """
+    ip = pkt.ip
+    if ip is None or ip.total_len <= 0:
+        return
+    if ip.version == 4:
+        ip_payload = ip.total_len - ip.hdr_len
+    else:
+        # IPv6 的 payload length 不含 40 字节基本头，但包含扩展头
+        ip_payload = ip.total_len - max(0, ip.hdr_len - 40)
+    if ip_payload <= 0:
+        return
+    if pkt.tcp is not None:
+        want = ip_payload - pkt.tcp.hdr_len
+        if 0 <= want < len(pkt.tcp.payload):
+            pkt.tcp.payload = pkt.tcp.payload[:want]
+    elif pkt.udp is not None:
+        want = ip_payload - 8
+        if 0 <= want < len(pkt.udp.payload):
+            pkt.udp.payload = pkt.udp.payload[:want]
+
+
 def parse(data: bytes, linktype: int = LINKTYPE_EN10MB, ts: float = 0.0, index: int = 0) -> Packet:
     """把一帧原始字节解析成 Packet。"""
     pkt = Packet(index=index, ts=ts, caplen=len(data), wirelen=len(data),
@@ -527,6 +553,7 @@ def parse(data: bytes, linktype: int = LINKTYPE_EN10MB, ts: float = 0.0, index: 
             pkt.udp = _parse_udp(data, l4)
         elif pkt.ip.proto in (IPPROTO_ICMP, IPPROTO_ICMPV6):
             pkt.icmp = _parse_icmp(data, l4)
+        _trim_to_ip_length(pkt)
     pkt.app = _app(pkt)
     return pkt
 

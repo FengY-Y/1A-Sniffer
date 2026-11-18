@@ -148,6 +148,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flow_model = FlowModel()
         self.resolver = ProcessResolver()
         self._pending: List[decode.Packet] = []
+        self._stream_key = None        # 当前下方显示的流，避免每秒重渲染
 
         self._build_ui()
         self._refresh_devices()
@@ -350,6 +351,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _clear(self):
         self.model.clear()
         self.flow_model.set_rows([])
+        self._flow_cache = []
+        self._stream_key = None
+        self.stream_view.clear()
 
     def _save_pcap(self):
         if not self.model.packets:
@@ -398,12 +402,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._flow_cache = flows
         self.flow_model.set_rows([f.row() for f in flows])
 
-        # 表格每秒重建，按 key 把选中行找回来，否则下面的流内容会闪
+        # 表格每秒重建。如果原来选中的那行还在原位，就不要重复 selectRow：
+        # 那会触发一次 selectionChanged，把下面的文本框重新渲染、滚动条弹回顶部。
         if keep_key is not None:
-            for row, f in enumerate(flows):
-                if f.key == keep_key:
-                    self.flows_view.selectRow(row)
-                    break
+            cur = self.flows_view.currentIndex()
+            same = (cur.isValid() and cur.row() < len(flows)
+                    and flows[cur.row()].key == keep_key)
+            if not same:
+                for row, f in enumerate(flows):
+                    if f.key == keep_key:
+                        self.flows_view.selectRow(row)
+                        break
 
     def _on_flow_select(self, *_):
         idx = self.flows_view.currentIndex()
@@ -411,6 +420,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if not idx.isValid() or idx.row() >= len(cache):
             return
         flow = cache[idx.row()]
+        if flow.key == self._stream_key:
+            return                     # 同一条流，别打断用户滚动
+        self._stream_key = flow.key
         if flow.stream is None:
             self.stream_view.setPlainText(f"{flow.proto} 流，没有应用层载荷。")
         else:

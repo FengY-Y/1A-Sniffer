@@ -125,6 +125,15 @@ class TestDecode(unittest.TestCase):
         self.assertEqual(pkt.app.proto, "TLS")
         self.assertEqual(pkt.app.detail["SNI"], "www.example.com")
 
+    def test_ethernet_padding_trimmed(self):
+        """小包会被补到 60 字节，填充的 0 不能算进 TCP 载荷。"""
+        body = b"GET / HTTP/1.1\r\n\r\n"
+        frame = eth(payload=ipv4(payload=tcp(payload=body)))
+        padded = frame + b"\x00" * max(0, 60 - len(frame))
+        pkt = decode.parse(padded, 1)
+        self.assertEqual(pkt.tcp.payload, body)
+        self.assertNotIn(b"\x00", pkt.tcp.payload)
+
     def test_hexdump(self):
         text = decode.hexdump(b"ABC")
         self.assertIn("41 42 43", text)
