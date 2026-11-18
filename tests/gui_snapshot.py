@@ -43,10 +43,21 @@ def main() -> int:
             win.table.selectRow(row)
             break
     app.processEvents()
-
     ok = win.grab().save(out)
-    print(f"saved={out} ok={ok} rows={len(parsed)}")
-    return 0 if ok else 1
+
+    # 再渲染「流追踪」页，确认进程列存在
+    from sniffer.flows import FlowTable
+    table = FlowTable()
+    for pkt in parsed:
+        table.feed(pkt)
+    win.flow_model.set_rows([f.row() for f in table.flows()])
+    win.tabs.setCurrentIndex(1)
+    app.processEvents()
+    flows_out = out.replace(".png", "_flows.png")
+    ok2 = win.grab().save(flows_out)
+
+    print(f"saved={out} ok={ok} flows={flows_out} ok2={ok2} rows={len(parsed)}")
+    return 0 if ok and ok2 else 1
 
 
 if __name__ == "__main__":

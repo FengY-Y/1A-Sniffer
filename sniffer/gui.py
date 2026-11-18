@@ -248,9 +248,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.flows_view = QtWidgets.QTableView()
         self.flows_view.setModel(self.flow_model)
-        self.flows_view.horizontalHeader().setStretchLastSection(True)
         self.flows_view.setAlternatingRowColors(True)
         self.flows_view.verticalHeader().setVisible(False)
+        self.flows_view.verticalHeader().setDefaultSectionSize(22)
+        self.flows_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        for col, w in enumerate((70, 210, 210, 70, 80, 90, 90, 90, 150)):
+            self.flows_view.setColumnWidth(col, w)
+        self.flows_view.horizontalHeader().setStretchLastSection(True)
 
         tabs = QtWidgets.QTabWidget()
         tabs.addTab(top, "数据包")
