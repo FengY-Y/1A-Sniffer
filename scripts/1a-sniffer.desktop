@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=1A Sniffer
+Name[zh_CN]=1A 嗅探器
+Comment=网络嗅探器（实验 1A）
+Exec=/home/fy/lab1a/scripts/run-gui.sh
+Path=/home/fy/lab1a
+Icon=utilities-system-monitor
+Terminal=false
+StartupNotify=true
+Categories=Network;Security;
