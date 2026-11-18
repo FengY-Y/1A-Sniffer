@@ -255,10 +255,24 @@ class MainWindow(QtWidgets.QMainWindow):
         for col, w in enumerate((70, 210, 210, 70, 80, 90, 90, 90, 150)):
             self.flows_view.setColumnWidth(col, w)
         self.flows_view.horizontalHeader().setStretchLastSection(True)
+        self.flows_view.selectionModel().selectionChanged.connect(self._on_flow_select)
+
+        # 选中一条流，下方显示重组后的应用层内容（类似 Wireshark 的 Follow TCP Stream）
+        self.stream_view = QtWidgets.QPlainTextEdit()
+        self.stream_view.setReadOnly(True)
+        self.stream_view.setFont(QtGui.QFont("Monospace", 9))
+        self.stream_view.setLineWrapMode(QtWidgets.QPlainTextEdit.WidgetWidth)
+        self.stream_view.setPlaceholderText(
+            "选中上面一条 TCP 流，这里显示重组后的完整请求/响应")
+
+        flow_box = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        flow_box.addWidget(self.flows_view)
+        flow_box.addWidget(self.stream_view)
+        flow_box.setSizes([260, 360])
 
         tabs = QtWidgets.QTabWidget()
         tabs.addTab(top, "数据包")
-        tabs.addTab(self.flows_view, "流追踪")
+        tabs.addTab(flow_box, "流追踪")
         self.tabs = tabs
         self.setCentralWidget(tabs)
 
@@ -376,7 +390,31 @@ class MainWindow(QtWidgets.QMainWindow):
     def _refresh_flows(self):
         if self.engine is None:
             return
-        self.flow_model.set_rows([f.row() for f in self.engine.flow_objects()])
+        old = getattr(self, "_flow_cache", [])
+        idx = self.flows_view.currentIndex()
+        keep_key = old[idx.row()].key if idx.isValid() and idx.row() < len(old) else None
+
+        flows = self.engine.flow_objects()
+        self._flow_cache = flows
+        self.flow_model.set_rows([f.row() for f in flows])
+
+        # 表格每秒重建，按 key 把选中行找回来，否则下面的流内容会闪
+        if keep_key is not None:
+            for row, f in enumerate(flows):
+                if f.key == keep_key:
+                    self.flows_view.selectRow(row)
+                    break
+
+    def _on_flow_select(self, *_):
+        idx = self.flows_view.currentIndex()
+        cache = getattr(self, "_flow_cache", [])
+        if not idx.isValid() or idx.row() >= len(cache):
+            return
+        flow = cache[idx.row()]
+        if flow.stream is None:
+            self.stream_view.setPlainText(f"{flow.proto} 流，没有应用层载荷。")
+        else:
+            self.stream_view.setPlainText(flow.stream.render())
 
     def _on_select(self, *_):
         idx = self.table.currentIndex()

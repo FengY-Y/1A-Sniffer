@@ -11,6 +11,7 @@
 | `sniffer/pcap.py` | libpcap 的 ctypes 绑定：枚举网卡、打开设备、BPF 过滤、统计、写 pcap |
 | `sniffer/decode.py` | 以太网/VLAN/IPv4/IPv6/TCP/UDP/ICMP/ARP 逐层解析 + HTTP/DNS/TLS(SNI) 初判 + hexdump |
 | `sniffer/flows.py` | 五元组流表（双向合并、LRU、状态），以及按 `/proc` 做进程归因 |
+| `sniffer/reassembly.py` | TCP 双向流重组（按 seq 排序、去重、处理空洞与序号回绕） |
 | `sniffer/engine.py` | 抓包线程 + 队列 + 丢包统计；没装 libpcap 时自动退化为纯 Python 离线读文件 |
 | `sniffer/cli.py` | 命令行版（先跑通这个） |
 | `sniffer/gui.py` | PyQt5 三栏界面（Wireshark 风格） |
@@ -81,8 +82,11 @@ python3 -m sniffer.cli -r demo/demo.pcap --flows
 sudo python3 -m sniffer.cli -l
 sudo python3 -m sniffer.cli -i eth0 -f "tcp port 80" -v
 
-# 3) GUI
-sudo python3 -m sniffer.gui
+# 3) 看某条流重组后的完整内容（编号来自 --flows 输出）
+python3 -m sniffer.cli -r demo/demo.pcap --flows --follow 2
+
+# 4) GUI
+bash scripts/run-gui.sh
 ```
 
 ## 测试
@@ -91,7 +95,8 @@ sudo python3 -m sniffer.gui
 python3 -m unittest discover -s tests -t . -v
 ```
 
-12 个用例覆盖 HTTP 请求/响应、DNS、ARP、IPv6、VLAN、TLS SNI、截断包、流合并、pcap 读写。
+23 个用例：HTTP 请求/响应、DNS、ARP、IPv6、VLAN、TLS SNI、截断包、流合并、pcap 读写，
+以及 TCP 重组（乱序、重传、重叠、空洞、序号回绕、截断、文本/十六进制渲染）。
 
 ## 状态说明
 

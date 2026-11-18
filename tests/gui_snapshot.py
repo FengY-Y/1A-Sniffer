@@ -45,13 +45,19 @@ def main() -> int:
     app.processEvents()
     ok = win.grab().save(out)
 
-    # 再渲染「流追踪」页，确认进程列存在
+    # 再渲染「流追踪」页：选中一条带载荷的 TCP 流，下方应显示重组内容
     from sniffer.flows import FlowTable
     table = FlowTable()
     for pkt in parsed:
         table.feed(pkt)
-    win.flow_model.set_rows([f.row() for f in table.flows()])
+    flows = table.flows()
+    win._flow_cache = flows
+    win.flow_model.set_rows([f.row() for f in flows])
     win.tabs.setCurrentIndex(1)
+    for row, f in enumerate(flows):
+        if f.stream is not None:
+            win.flows_view.selectRow(row)
+            break
     app.processEvents()
     flows_out = out.replace(".png", "_flows.png")
     ok2 = win.grab().save(flows_out)

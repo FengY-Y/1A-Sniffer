@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from .decode import Packet
+from .reassembly import TcpStream
 
 MAX_FLOWS = 20000
 
@@ -45,6 +46,7 @@ class Flow:
     app: str = ""
     host: str = ""
     process: str = ""            # 归属进程，流存活期间解析好存下来
+    stream: Optional[TcpStream] = None   # TCP 双向重组缓冲
     _proc_tried: float = 0.0
     pkt_ids: deque = field(default_factory=lambda: deque(maxlen=200))
 
@@ -83,6 +85,12 @@ class Flow:
                 self.fin = True
             if f & 0x04:
                 self.rst = True
+            # 有载荷就喂给重组缓冲，按方向分开
+            if pkt.tcp.payload:
+                if self.stream is None:
+                    self.stream = TcpStream()
+                from_client = (pkt.src, pkt.sport) == self.a
+                self.stream.feed(from_client, pkt.tcp.seq, pkt.tcp.payload)
         if pkt.app is not None:
             if not self.app:
                 self.app = pkt.app.proto

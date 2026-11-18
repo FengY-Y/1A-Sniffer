@@ -37,6 +37,8 @@ def main(argv=None) -> int:
     ap.add_argument("-v", "--verbose", action="store_true", help="打印每个包的详细字段")
     ap.add_argument("--no-promisc", action="store_true", help="关闭混杂模式")
     ap.add_argument("--flows", action="store_true", help="退出时打印流统计")
+    ap.add_argument("--follow", type=int, metavar="N",
+                    help="打印第 N 条流的重组内容（编号见 --flows 输出）")
     args = ap.parse_args(argv)
 
     if args.list:
@@ -103,6 +105,15 @@ def main(argv=None) -> int:
             r = f.row()
             print(f"{r[0]:<6} {r[1]:<24} {r[2]:<24} {r[3]:<6} {r[4]:>5} {r[5]:>8}  "
                   f"{r[7]:<7} {r[8]}")
+    if args.follow:
+        flows = engine.flow_objects()
+        n = args.follow
+        if 1 <= n <= len(flows):
+            f = flows[n - 1]
+            print(f"\n===== 第 {n} 条流：{f.proto} {f.a[0]}:{f.a[1]} -> {f.b[0]}:{f.b[1]} =====")
+            print(f.stream.render() if f.stream else "（这条流没有应用层载荷）")
+        else:
+            print(f"\n没有第 {n} 条流（当前共 {len(flows)} 条）")
     return 0
 
 
