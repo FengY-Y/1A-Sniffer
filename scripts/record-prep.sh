@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # 录制前的一键准备：起 HTTP 服务、清屏、打印流程提示、可选持续造流量。
 #
 # 用法：
