@@ -107,10 +107,23 @@ class StreamBuffer:
 
 
 def decode_stream(data: bytes) -> str:
-    """能被当成文本就按文本显示，否则退回十六进制。"""
-    sample = data[:4096]
-    if not sample:
+    """能被当成文本就按文本显示，否则退回十六进制。
+
+    判断顺序很关键：先试 UTF-8 整体解码——中文正文是合法 UTF-8，
+    但每个汉字占 3 个字节、都大于 127，用「ASCII 可打印比例」判断
+    会把它误判成二进制（这是之前把网页内容显示成十六进制的原因）。
+    """
+    if not data:
         return ""
+    try:
+        text = data.decode("utf-8")
+        ctrl = sum(1 for ch in text if ord(ch) < 32 and ch not in "\t\n\r")
+        if ctrl / max(1, len(text)) < 0.02:
+            return text.replace("\r\n", "\n").replace("\r", "\n")
+    except UnicodeDecodeError:
+        pass
+
+    sample = data[:4096]
     printable = sum(1 for b in sample if 32 <= b < 127 or b in (9, 10, 13))
     if printable / len(sample) >= 0.85:
         text = data.decode("utf-8", errors="replace")

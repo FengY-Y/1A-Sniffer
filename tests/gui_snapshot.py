@@ -25,12 +25,13 @@ from sniffer.pcapfile import read_pcap  # noqa: E402
 
 def main() -> int:
     out = sys.argv[1] if len(sys.argv) > 1 else "/tmp/gui.png"
+    src = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "demo", "demo.pcap")
     app = QtWidgets.QApplication(sys.argv[:1])
 
     win = MainWindow()
     win.resize(1280, 800)
 
-    linktype, packets = read_pcap(os.path.join(ROOT, "demo", "demo.pcap"))
+    linktype, packets = read_pcap(src)
     parsed = [
         decode.parse(data, linktype, ts=ts, index=i + 1)
         for i, (ts, _caplen, _wirelen, data) in enumerate(packets)
