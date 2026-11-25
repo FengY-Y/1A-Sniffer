@@ -104,8 +104,4 @@ python3 -m unittest discover -s tests -t . -v
 - `gui.py` 只做了语法检查，没有在真实 Qt 环境里跑过 —— 第一次运行大概率要调几处布局/信号，这是正常的。
 - libpcap 绑定按 Linux x86-64 的 `struct pcap_pkthdr` 布局写；Windows 上要用 Npcap 并改结构体（时间戳是 8 字节），本骨架不保证可用。
 
-## 建议的下一步
 
-1. 跑通 `demo.pcap` → 跑通实时抓包 → 再改 GUI。
-2. 想要高分就按文档第 6 节排期走，第 4 天必须有能演示的版本。
-3. 报告里的图（架构图、解析流程图、时序图）比代码行数更重要。
